@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="description" content="Dashboard de consentimientos: usuarios unicos por canal, tipo y estado con graficos interactivos."/>
+  <title>Dashboard de Consentimientos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div>
+      <h1 class="header-title">Dashboard de Consentimientos</h1>
+      <p class="header-sub">Usuarios unicos &middot; Canal &middot; Tipo de consentimiento &middot; Estado</p>
+    </div>
+  </div>
+</header>
+
+<!-- KPIs -->
+<section class="kpis" id="kpis" aria-label="Indicadores clave"></section>
+
+<!-- FILTROS -->
+<section class="filters-bar" aria-label="Filtros">
+  <div class="filters-inner">
+    <div class="filter-group">
+      <label for="f-fecha-ini">Fecha desde</label>
+      <input type="date" id="f-fecha-ini"/>
+    </div>
+    <div class="filter-group">
+      <label for="f-fecha-fin">Fecha hasta</label>
+      <input type="date" id="f-fecha-fin"/>
+    </div>
+    <div class="filter-group">
+      <label for="f-canal">Canal</label>
+      <select id="f-canal"><option value="">Todos los canales</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="f-consent">Consentimiento</label>
+      <select id="f-consent"><option value="">Todos</option></select>
+    </div>
+    <button id="btn-reset" class="btn-reset">&#8635; Limpiar</button>
+  </div>
+</section>
+
+<!-- GRAFICOS -->
+<main class="main">
+
+  <!-- Linea + Barras -->
+  <div class="section">
+    <div class="section-title">
+      📈 Evolucion de Usuarios por Estado
+      <span>— usuarios unicos por dia</span>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-panel">
+        <div class="section-title" style="border:none;padding:0 0 10px 0;font-size:.8rem;">Grafico de Linea</div>
+        <div class="chart-canvas-wrap"><canvas id="chart-line"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="section-title" style="border:none;padding:0 0 10px 0;font-size:.8rem;">Grafico de Barras</div>
+        <div class="chart-canvas-wrap"><canvas id="chart-bar"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barras por tipo de consentimiento -->
+  <div class="section">
+    <div class="section-title">
+      📊 Distribucion por Tipo de Consentimiento y Estado
+      <span>— usuarios unicos totales en rango filtrado</span>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-canvas-wrap" style="height:320px;"><canvas id="chart-tipo"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tabla matriz -->
+  <div class="section">
+    <div class="section-title">
+      📋 Matriz Canal x Consentimiento
+      <span>— usuarios unicos y porcentaje por estado</span>
+    </div>
+    <div class="table-wrapper">
+      <table id="tabla" aria-live="polite">
+        <thead id="tabla-head"></thead>
+        <tbody id="tabla-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <p>Generado desde <code>consent.csv</code></p>
+</footer>
+
+<script>
+// ── Datos embebidos ────────────────────────────────────────────────────────────
+const DATA = {"canales":["APP","MVE","VER"],"consentimientos":["Analítica, perfilamiento e Inteligencia Artificial","Compartición de datos con proveedores y aliados comerciales","Comunicaciones comerciales y marketing","Cookies y tecnologías de rastreo digital","Geolocalización","Grabaciones de teleconsulta","Investigación y estudios clínicos"],"estados":["ACEPTADO","RECHAZADO"],"fechas":["2026-09-16","2026-10-05","2026-10-06","2026-10-07"],"records":[{"f":"2026-10-05","c":"VER","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":178},{"f":"2026-10-05","c":"VER","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":178},{"f":"2026-10-05","c":"VER","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":178},{"f":"2026-10-05","c":"VER","t":"Geolocalización","e":"ACEPTADO","n":178},{"f":"2026-10-05","c":"VER","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":178},{"f":"2026-10-05","c":"VER","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":178},{"f":"2026-10-05","c":"VER","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":178},{"f":"2026-10-06","c":"VER","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"VER","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"VER","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"VER","t":"Geolocalización","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"VER","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"VER","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"VER","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"MVE","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":307},{"f":"2026-10-06","c":"MVE","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":307},{"f":"2026-10-06","c":"MVE","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":307},{"f":"2026-10-06","c":"MVE","t":"Geolocalización","e":"ACEPTADO","n":307},{"f":"2026-10-06","c":"MVE","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":307},{"f":"2026-10-06","c":"MVE","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":307},{"f":"2026-10-06","c":"MVE","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":307},{"f":"2026-10-07","c":"VER","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"VER","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"VER","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"VER","t":"Geolocalización","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"VER","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"VER","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"VER","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"APP","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"APP","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"APP","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"APP","t":"Geolocalización","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"APP","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"APP","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"APP","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"MVE","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":261},{"f":"2026-10-07","c":"MVE","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":261},{"f":"2026-10-07","c":"MVE","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":261},{"f":"2026-10-07","c":"MVE","t":"Geolocalización","e":"ACEPTADO","n":261},{"f":"2026-10-07","c":"MVE","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":261},{"f":"2026-10-07","c":"MVE","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":261},{"f":"2026-10-07","c":"MVE","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":261},{"f":"2026-10-06","c":"APP","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":35},{"f":"2026-10-06","c":"APP","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":35},{"f":"2026-10-06","c":"APP","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":35},{"f":"2026-10-06","c":"APP","t":"Geolocalización","e":"ACEPTADO","n":35},{"f":"2026-10-06","c":"APP","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":35},{"f":"2026-10-06","c":"APP","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":35},{"f":"2026-10-06","c":"APP","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":35},{"f":"2026-10-05","c":"APP","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"APP","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"APP","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"APP","t":"Geolocalización","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"APP","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"APP","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"APP","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"MVE","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":5},{"f":"2026-10-05","c":"MVE","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":5},{"f":"2026-10-05","c":"MVE","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":5},{"f":"2026-10-05","c":"MVE","t":"Geolocalización","e":"ACEPTADO","n":5},{"f":"2026-10-05","c":"MVE","t":"Grabaciones de teleconsulta","e":"ACEPTADO","n":5},{"f":"2026-10-05","c":"MVE","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":5},{"f":"2026-10-05","c":"MVE","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":5},{"f":"2026-10-06","c":"MVE","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"MVE","t":"Compartición de datos con proveedores y aliados comerciales","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"MVE","t":"Cookies y tecnologías de rastreo digital","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"MVE","t":"Geolocalización","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"MVE","t":"Grabaciones de teleconsulta","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"MVE","t":"Investigación y estudios clínicos","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"MVE","t":"Comunicaciones comerciales y marketing","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"VER","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"RECHAZADO","n":3},{"f":"2026-10-06","c":"VER","t":"Compartición de datos con proveedores y aliados comerciales","e":"RECHAZADO","n":3},{"f":"2026-10-06","c":"VER","t":"Cookies y tecnologías de rastreo digital","e":"RECHAZADO","n":3},{"f":"2026-10-06","c":"VER","t":"Geolocalización","e":"RECHAZADO","n":3},{"f":"2026-10-06","c":"VER","t":"Grabaciones de teleconsulta","e":"RECHAZADO","n":3},{"f":"2026-10-06","c":"VER","t":"Investigación y estudios clínicos","e":"RECHAZADO","n":3},{"f":"2026-10-06","c":"VER","t":"Comunicaciones comerciales y marketing","e":"RECHAZADO","n":3},{"f":"2026-09-16","c":"VER","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"ACEPTADO","n":1},{"f":"2026-09-16","c":"VER","t":"Compartición de datos con proveedores y aliados comerciales","e":"ACEPTADO","n":1},{"f":"2026-09-16","c":"VER","t":"Cookies y tecnologías de rastreo digital","e":"ACEPTADO","n":1},{"f":"2026-09-16","c":"VER","t":"Geolocalización","e":"ACEPTADO","n":1},{"f":"2026-09-16","c":"VER","t":"Grabaciones de teleconsulta","e":"RECHAZADO","n":1},{"f":"2026-09-16","c":"VER","t":"Investigación y estudios clínicos","e":"ACEPTADO","n":1},{"f":"2026-09-16","c":"VER","t":"Comunicaciones comerciales y marketing","e":"ACEPTADO","n":1},{"f":"2026-10-06","c":"APP","t":"Analítica, perfilamiento e Inteligencia Artificial","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","t":"Compartición de datos con proveedores y aliados comerciales","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","t":"Cookies y tecnologías de rastreo digital","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","t":"Geolocalización","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","t":"Grabaciones de teleconsulta","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","t":"Investigación y estudios clínicos","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","t":"Comunicaciones comerciales y marketing","e":"RECHAZADO","n":1}],"users_fce":[{"f":"2026-10-05","c":"VER","e":"ACEPTADO","n":178},{"f":"2026-10-06","c":"VER","e":"ACEPTADO","n":925},{"f":"2026-10-06","c":"MVE","e":"ACEPTADO","n":307},{"f":"2026-10-07","c":"VER","e":"ACEPTADO","n":838},{"f":"2026-10-07","c":"APP","e":"ACEPTADO","n":38},{"f":"2026-10-07","c":"MVE","e":"ACEPTADO","n":261},{"f":"2026-10-06","c":"APP","e":"ACEPTADO","n":35},{"f":"2026-10-05","c":"APP","e":"ACEPTADO","n":20},{"f":"2026-10-05","c":"MVE","e":"ACEPTADO","n":5},{"f":"2026-10-06","c":"MVE","e":"RECHAZADO","n":2},{"f":"2026-10-06","c":"VER","e":"RECHAZADO","n":3},{"f":"2026-09-16","c":"VER","e":"ACEPTADO","n":1},{"f":"2026-09-16","c":"VER","e":"RECHAZADO","n":1},{"f":"2026-10-06","c":"APP","e":"RECHAZADO","n":1}],"users_fc":[{"f":"2026-10-05","c":"VER","n":178},{"f":"2026-10-06","c":"VER","n":928},{"f":"2026-10-06","c":"MVE","n":309},{"f":"2026-10-07","c":"VER","n":838},{"f":"2026-10-07","c":"APP","n":38},{"f":"2026-10-07","c":"MVE","n":261},{"f":"2026-10-06","c":"APP","n":36},{"f":"2026-10-05","c":"APP","n":20},{"f":"2026-10-05","c":"MVE","n":5},{"f":"2026-09-16","c":"VER","n":1}],"kpis":{"total_usuarios":2614,"total_registros":18298,"canales":3,"consentimientos":7,"fecha_inicio":"2026-09-16","fecha_fin":"2026-10-07"}};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const esc  = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const fmt  = n => Number(n).toLocaleString("es");
+const ECLS = { ACEPTADO:"est-aceptado", RECHAZADO:"est-rechazado", PENDIENTE:"est-pendiente" };
+const EICO = { ACEPTADO:"✔", RECHAZADO:"✖", PENDIENTE:"⏳" };
+const ECOLOR = { ACEPTADO:"#3fb950", RECHAZADO:"#f85149", PENDIENTE:"#e3b341" };
+const ECOLORF= { ACEPTADO:"rgba(63,185,80,.15)", RECHAZADO:"rgba(248,81,73,.15)", PENDIENTE:"rgba(227,179,65,.15)" };
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+const KPI_DEFS = [
+  {label:"Usuarios Unicos",          key:"total_usuarios",  icon:"👥", cls:"kpi-blue"},
+  {label:"Registros Totales",         key:"total_registros", icon:"📋", cls:"kpi-purple"},
+  {label:"Canales",                   key:"canales",         icon:"📡", cls:"kpi-teal"},
+  {label:"Tipos de Consentimiento",   key:"consentimientos", icon:"📄", cls:"kpi-orange"},
+];
+function renderKPIs(kpis) {
+  const kpisEl = document.getElementById("kpis");
+  kpisEl.innerHTML = KPI_DEFS.map(d => `
+    <div class="kpi-card ${d.cls}">
+      <span class="kpi-icon">${d.icon}</span>
+      <div class="kpi-body">
+        <span class="kpi-value">${fmt(kpis[d.key] ?? 0)}</span>
+        <span class="kpi-label">${d.label}</span>
+      </div>
+    </div>`).join("");
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────────
+const fFechaIni = document.getElementById("f-fecha-ini");
+const fFechaFin = document.getElementById("f-fecha-fin");
+const fCanal    = document.getElementById("f-canal");
+const fConsent  = document.getElementById("f-consent");
+
+// Rangos de fecha por defecto
+if (DATA.fechas.length) {
+  fFechaIni.min = fFechaIni.value = DATA.fechas[0];
+  fFechaFin.max = fFechaFin.value = DATA.fechas[DATA.fechas.length-1];
+  fFechaIni.max = DATA.fechas[DATA.fechas.length-1];
+  fFechaFin.min = DATA.fechas[0];
+}
+
+DATA.canales.forEach(c => fCanal.insertAdjacentHTML("beforeend",`<option value="${esc(c)}">${esc(c)}</option>`));
+DATA.consentimientos.forEach(c => fConsent.insertAdjacentHTML("beforeend",`<option value="${esc(c)}">${esc(c)}</option>`));
+
+[fFechaIni, fFechaFin, fCanal, fConsent].forEach(el => el.addEventListener("change", render));
+document.getElementById("btn-reset").addEventListener("click", () => {
+  fFechaIni.value = DATA.fechas[0] || "";
+  fFechaFin.value = DATA.fechas[DATA.fechas.length-1] || "";
+  fCanal.value = ""; fConsent.value = "";
+  render();
+});
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const CHART_DEFAULTS = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{ labels:{ color:"#8b949e", font:{family:"Inter",size:11} } },
+             tooltip:{ backgroundColor:"#21262d", borderColor:"#30363d", borderWidth:1,
+                        titleColor:"#e6edf3", bodyColor:"#8b949e" } },
+  scales:{
+    x:{ ticks:{ color:"#8b949e", font:{size:10} }, grid:{ color:"rgba(48,54,61,.6)" } },
+    y:{ ticks:{ color:"#8b949e", font:{size:10} }, grid:{ color:"rgba(48,54,61,.6)" }, beginAtZero:true }
+  }
+};
+
+let chartLine, chartBar, chartTipo;
+
+function destroyCharts() {
+  [chartLine, chartBar, chartTipo].forEach(c => c && c.destroy());
+}
+
+function buildLineBar(fechasFilt, seriesFilt) {
+  // LINE
+  const ctxL = document.getElementById("chart-line").getContext("2d");
+  chartLine = new Chart(ctxL, {
+    type:"line",
+    data:{ labels: fechasFilt, datasets: DATA.estados.map(e => ({
+      label: e,
+      data: fechasFilt.map(f => seriesFilt[f]?.[e] ?? 0),
+      borderColor: ECOLOR[e] || "#388bfd",
+      backgroundColor: ECOLORF[e] || "rgba(56,139,253,.1)",
+      fill:true, tension:.3, pointRadius:3, pointHoverRadius:6,
+      borderWidth:2,
+    })) },
+    options:{
+      ...CHART_DEFAULTS,
+      scales:{
+        x:{ ...CHART_DEFAULTS.scales.x,
+             type:"category",
+             ticks:{ ...CHART_DEFAULTS.scales.x.ticks, maxRotation:45, maxTicksLimit:15 } },
+        y:{ ...CHART_DEFAULTS.scales.y }
+      },
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ ...CHART_DEFAULTS.plugins }
+    }
+  });
+
+  // BAR
+  const ctxB = document.getElementById("chart-bar").getContext("2d");
+  chartBar = new Chart(ctxB, {
+    type:"bar",
+    data:{ labels: fechasFilt, datasets: DATA.estados.map(e => ({
+      label: e,
+      data: fechasFilt.map(f => seriesFilt[f]?.[e] ?? 0),
+      backgroundColor: ECOLORF[e] || "rgba(56,139,253,.5)",
+      borderColor: ECOLOR[e] || "#388bfd",
+      borderWidth:1, borderRadius:3,
+    })) },
+    options:{
+      ...CHART_DEFAULTS,
+      scales:{
+        x:{ ...CHART_DEFAULTS.scales.x, stacked:true,
+             ticks:{ ...CHART_DEFAULTS.scales.x.ticks, maxRotation:45, maxTicksLimit:15 } },
+        y:{ ...CHART_DEFAULTS.scales.y, stacked:true }
+      },
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ ...CHART_DEFAULTS.plugins }
+    }
+  });
+}
+
+function buildTipo(tipoDataFilt, filtConsent) {
+  const tipos = filtConsent ? [filtConsent] : DATA.consentimientos;
+  const ctxT  = document.getElementById("chart-tipo").getContext("2d");
+
+  // Etiquetas cortas para el eje
+  const labelShort = t => t.length > 30 ? t.substring(0,28)+"…" : t;
+
+  chartTipo = new Chart(ctxT, {
+    type:"bar",
+    data:{
+      labels: tipos.map(labelShort),
+      datasets: DATA.estados.map(e => ({
+        label: e,
+        data: tipos.map(t => tipoDataFilt[t]?.[e] ?? 0),
+        backgroundColor: ECOLORF[e] || "rgba(56,139,253,.5)",
+        borderColor: ECOLOR[e] || "#388bfd",
+        borderWidth:1, borderRadius:4,
+      }))
+    },
+    options:{
+      ...CHART_DEFAULTS,
+      indexAxis:"y",
+      scales:{
+        x:{ ...CHART_DEFAULTS.scales.x, stacked:true },
+        y:{ ...CHART_DEFAULTS.scales.y, stacked:true,
+             ticks:{ color:"#8b949e", font:{size:10}, autoSkip:false } }
+      },
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ ...CHART_DEFAULTS.plugins }
+    }
+  });
+}
+
+// ── Tabla ────────────────────────────────────────────────────────────────────
+function renderTabla(rowsFilt, estados) {
+  const thead = document.getElementById("tabla-head");
+  const tbody = document.getElementById("tabla-body");
+  thead.innerHTML = "";
+
+  const trh = document.createElement("tr");
+  trh.innerHTML =
+    `<th class="th-canal" rowspan="2">Canal</th>` +
+    `<th class="th-consent" rowspan="2">Consentimiento</th>`;
+  estados.forEach(e => {
+    trh.innerHTML += `<th colspan="2" class="th-estado ${ECLS[e]||''}">
+      <span class="estado-badge">${EICO[e]||''} ${esc(e)}</span></th>`;
+  });
+  trh.innerHTML += `<th class="th-total" rowspan="2">Total</th>`;
+  thead.appendChild(trh);
+
+  const trh2 = document.createElement("tr");
+  estados.forEach(() => {
+    trh2.innerHTML += `<th class="th-sub">Usuarios</th><th class="th-sub">%</th>`;
+  });
+  thead.appendChild(trh2);
+
+  tbody.innerHTML = "";
+  if (!rowsFilt.length) {
+    tbody.innerHTML=`<tr><td colspan="999" class="empty-msg">Sin resultados.</td></tr>`;
+    return;
+  }
+  rowsFilt.forEach((row,i) => {
+    const tr = document.createElement("tr");
+    tr.className = i%2===0?"tr-even":"tr-odd";
+    let h =
+      `<td class="td-canal"><span class="canal-badge">${esc(row.canal)}</span></td>` +
+      `<td class="td-consent">${esc(row.consentimiento)}</td>`;
+    estados.forEach(e => {
+      const d = row[e]||{count:0,pct:0};
+      const pcls = ECLS[e]||"est-default";
+      h +=
+        `<td class="td-count">${fmt(d.count)}</td>` +
+        `<td class="td-pct"><div class="pct-bar-wrap">
+           <div class="pct-bar ${pcls}" style="width:${Math.min(d.pct,100)}%"></div>
+           <span class="pct-label">${d.pct.toFixed(1)}%</span>
+         </div></td>`;
+    });
+    h += `<td class="td-total">${fmt(row.total)}</td>`;
+    tr.innerHTML = h;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Render principal ──────────────────────────────────────────────────────────
+function render() {
+  const vFechaIni = fFechaIni.value;
+  const vFechaFin = fFechaFin.value;
+  const vCanal    = fCanal.value;
+  const vConsent  = fConsent.value;
+
+  // 1. Filtrar fechas para los graficos
+  const fechasFilt = DATA.fechas.filter(f =>
+    (!vFechaIni || f >= vFechaIni) && (!vFechaFin || f <= vFechaFin)
+  );
+
+  // 2. Filtrar registros atomicos segun todos los filtros activos
+  const recordsFilt = DATA.records.filter(r => {
+    if (vFechaIni && r.f < vFechaIni) return false;
+    if (vFechaFin && r.f > vFechaFin) return false;
+    if (vCanal && r.c !== vCanal) return false;
+    if (vConsent && r.t !== vConsent) return false;
+    return true;
+  });
+
+  // 3. Actualizar KPIs dinamicamente segun los filtros activos
+  const totalRegistros = recordsFilt.reduce((acc, r) => acc + r.n, 0);
+  let totalUsuarios = 0;
+  if (vConsent) {
+    totalUsuarios = totalRegistros;
+  } else {
+    totalUsuarios = DATA.users_fc
+      .filter(u => (!vFechaIni || u.f >= vFechaIni) && (!vFechaFin || u.f <= vFechaFin) && (!vCanal || u.c === vCanal))
+      .reduce((acc, u) => acc + u.n, 0);
+  }
+  const canalesUnicos = new Set(recordsFilt.map(r => r.c)).size;
+  const consentUnicos = new Set(recordsFilt.map(r => r.t)).size;
+
+  renderKPIs({
+    total_usuarios: totalUsuarios,
+    total_registros: totalRegistros,
+    canales: canalesUnicos,
+    consentimientos: consentUnicos
+  });
+
+  // 4. Series de tiempo por fecha y estado (Line y Bar charts)
+  const seriesPorFecha = {};
+  fechasFilt.forEach(f => {
+    seriesPorFecha[f] = {};
+    DATA.estados.forEach(e => { seriesPorFecha[f][e] = 0; });
+  });
+
+  if (vConsent) {
+    recordsFilt.forEach(r => {
+      if (seriesPorFecha[r.f] && seriesPorFecha[r.f][r.e] !== undefined) {
+        seriesPorFecha[r.f][r.e] += r.n;
+      }
+    });
+  } else {
+    DATA.users_fce
+      .filter(u => (!vFechaIni || u.f >= vFechaIni) && (!vFechaFin || u.f <= vFechaFin) && (!vCanal || u.c === vCanal))
+      .forEach(u => {
+        if (seriesPorFecha[u.f] && seriesPorFecha[u.f][u.e] !== undefined) {
+          seriesPorFecha[u.f][u.e] += u.n;
+        }
+      });
+  }
+
+  // 5. Totales por consentimiento (Horizontal Bar chart)
+  const tiposAMostrar = vConsent ? [vConsent] : DATA.consentimientos;
+  const tipoData = {};
+  tiposAMostrar.forEach(t => {
+    tipoData[t] = {};
+    DATA.estados.forEach(e => { tipoData[t][e] = 0; });
+  });
+  recordsFilt.forEach(r => {
+    if (tipoData[r.t] && tipoData[r.t][r.e] !== undefined) {
+      tipoData[r.t][r.e] += r.n;
+    }
+  });
+
+  // 6. Matriz Canal x Consentimiento (Tabla filtrada por fecha, canal y consentimiento)
+  const canalesTabla = vCanal ? [vCanal] : DATA.canales;
+  const consentTabla = vConsent ? [vConsent] : DATA.consentimientos;
+
+  const rowsFilt = [];
+  canalesTabla.forEach(canal => {
+    consentTabla.forEach(t => {
+      const pairRecs = recordsFilt.filter(r => r.c === canal && r.t === t);
+      const total = pairRecs.reduce((acc, r) => acc + r.n, 0);
+      if (total === 0) return;
+
+      const fila = { canal, consentimiento: t, total };
+      DATA.estados.forEach(e => {
+        const count = pairRecs.filter(r => r.e === e).reduce((acc, r) => acc + r.n, 0);
+        const pct   = total > 0 ? Number(((count / total) * 100).toFixed(2)) : 0;
+        fila[e] = { count, pct };
+      });
+      rowsFilt.push(fila);
+    });
+  });
+
+  destroyCharts();
+  buildLineBar(fechasFilt, seriesPorFecha);
+  buildTipo(tipoData, vConsent);
+  renderTabla(rowsFilt, DATA.estados);
+}
+
+render();
+</script>
+</body>
+</html>

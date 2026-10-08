@@ -1,0 +1,11 @@
+# Archivos grandes de datos
+politica.csv
+politica/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Entornos virtuales
+venv/
+.env
