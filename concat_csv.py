@@ -1,29 +1,37 @@
 """
 concat_csv.py
 -------------
-Concatena todos los archivos CSV de la carpeta 'politica' en un único archivo.
-Si un usuario aparece en más de un archivo, conserva únicamente el registro
-con la fecha más reciente y descarta los anteriores.
+Concatena y deduplica archivos CSV por usuario y tipo de consentimiento.
+Conserva únicamente el registro con la fecha más reciente para cada combinación
+de (usuario, tipo_consentimiento).
 
 Uso:
-    python concat_csv.py
+    python concat_csv.py <carpeta_o_archivo> <archivo_salida>
+
+Ejemplos:
+    python concat_csv.py politica politica.csv
+    python concat_csv.py consentimiento consent.csv
+    python concat_csv.py  (solicita los parámetros interactivamente si no se pasan)
 
 Salida:
-    politica_concatenado.csv  (en el mismo directorio que este script)
+    El archivo resultante se guarda en la carpeta leída y se copia/reemplaza
+    en la carpeta principal del proyecto (Dash consentimientos).
 """
 
+import argparse
 import csv
+import shutil
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-# ── Configuración ─────────────────────────────────────────────────────────────
-INPUT_FOLDER    = Path(__file__).with_name("politica")
-OUTPUT_FILE     = Path(__file__).with_name("politica.csv")
-ENCODINGS       = ["utf-8-sig", "latin-1"]  # se prueba en orden para detectar BOM
-OUTPUT_ENCODING = "utf-8-sig"         # utf-8 con BOM (compatible con Excel)
+# ── Configuración global ──────────────────────────────────────────────────────
+ROOT_DIR        = Path(__file__).resolve().parent
+ENCODINGS       = ["utf-8-sig", "latin-1"]  # se prueba en orden para detectar encoding/BOM
+OUTPUT_ENCODING = "utf-8-sig"               # utf-8 con BOM (compatible con Excel)
 
 COL_USUARIO = "usuario"               # columna identificador de usuario
+COL_TIPO    = "tipo_consentimiento"   # columna tipo de consentimiento
 COL_FECHA   = "fecha"                 # columna de fecha
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"     # formato de la columna de fecha
 
@@ -61,17 +69,74 @@ def abrir_csv(path: Path):
 
 # ── Concatenar y deduplicar ────────────────────────────────────────────────────
 def main():
-    archivos = sorted(INPUT_FOLDER.glob("*.csv"))
+    parser = argparse.ArgumentParser(
+        description="Concatena y deduplica archivos CSV por usuario y tipo de consentimiento."
+    )
+    parser.add_argument(
+        "entrada",
+        nargs="?",
+        default=None,
+        help="Carpeta o archivo CSV a leer (ej: 'politica', 'consentimiento', o 'politica/pol.csv')",
+    )
+    parser.add_argument(
+        "salida",
+        nargs="?",
+        default=None,
+        help="Nombre del archivo de salida (ej: 'politica.csv' o 'consent.csv')",
+    )
+    parser.add_argument("-i", "--input", dest="input_opt", default=None, help="Carpeta o archivo de entrada")
+    parser.add_argument("-o", "--output", dest="output_opt", default=None, help="Nombre del archivo de salida")
 
-    if not archivos:
-        print(f"No se encontraron archivos CSV en: {INPUT_FOLDER}")
+    args = parser.parse_args()
+
+    entrada = args.input_opt or args.entrada
+    if not entrada:
+        entrada = input("Ingrese la carpeta o archivo a leer (ej: politica): ").strip()
+        if not entrada:
+            entrada = "politica"
+
+    salida = args.output_opt or args.salida
+    if not salida:
+        default_salida = f"{Path(entrada).stem}.csv"
+        salida = input(f"Ingrese el nombre del archivo de salida [{default_salida}]: ").strip()
+        if not salida:
+            salida = default_salida
+
+    # Asegurar extensión .csv
+    if not salida.lower().endswith(".csv"):
+        salida += ".csv"
+    output_name = Path(salida).name
+
+    # Resolver ruta de entrada (relativa a ROOT_DIR o cwd)
+    ruta_entrada = Path(entrada)
+    if not ruta_entrada.is_absolute():
+        if (ROOT_DIR / ruta_entrada).exists():
+            ruta_entrada = (ROOT_DIR / ruta_entrada).resolve()
+        elif (Path.cwd() / ruta_entrada).exists():
+            ruta_entrada = (Path.cwd() / ruta_entrada).resolve()
+        else:
+            ruta_entrada = (ROOT_DIR / ruta_entrada).resolve()
+
+    if not ruta_entrada.exists():
+        print(f"\n[ERROR] No existe la ruta de entrada: {ruta_entrada}")
         sys.exit(1)
 
-    print(f"Archivos encontrados en '{INPUT_FOLDER.name}':")
+    if ruta_entrada.is_dir():
+        carpeta_origen = ruta_entrada
+        archivos = sorted(carpeta_origen.glob("*.csv"))
+    else:
+        carpeta_origen = ruta_entrada.parent
+        archivos = [ruta_entrada]
+
+    if not archivos:
+        print(f"\n[ERROR] No se encontraron archivos CSV en: {ruta_entrada}")
+        sys.exit(1)
+
+    print(f"\nArchivos a procesar en '{carpeta_origen.name}':")
     for a in archivos:
         print(f"  - {a.name}  ({a.stat().st_size / 1_048_576:.1f} MB)")
 
-    # Diccionario principal: usuario -> dict(row)
+    # Diccionario principal: (usuario, tipo_consentimiento) -> dict(row)
     registros: dict = {}
     header_guardado = None
     total_leidas    = 0
@@ -105,14 +170,17 @@ def main():
                 if not usuario:
                     continue  # omitir filas sin usuario
 
+                tipo = (row.get(COL_TIPO) or row.get("tipo_connsentimiento") or "").strip()
+                clave = (usuario, tipo)
+
                 fecha_actual = parse_fecha(row.get(COL_FECHA, ""))
 
-                if usuario not in registros:
-                    registros[usuario] = row
+                if clave not in registros:
+                    registros[clave] = row
                 else:
-                    fecha_existente = parse_fecha(registros[usuario].get(COL_FECHA, ""))
+                    fecha_existente = parse_fecha(registros[clave].get(COL_FECHA, ""))
                     if fecha_actual > fecha_existente:
-                        registros[usuario] = row  # reemplazar con el más reciente
+                        registros[clave] = row  # reemplazar con el más reciente
                         duplicados += 1
                     else:
                         duplicados += 1           # descartar el más antiguo (el actual)
@@ -122,10 +190,14 @@ def main():
         total_leidas += filas_archivo
         print(f"{filas_archivo:,} filas")
 
-    # ── Escribir resultado ───────────────────────────────────────────────────
-    print(f"\nEscribiendo {OUTPUT_FILE.name} ...", end=" ", flush=True)
+    # ── Rutas de guardado ─────────────────────────────────────────────────────
+    destino_origen = (carpeta_origen / output_name).resolve()
+    destino_raiz   = (ROOT_DIR / output_name).resolve()
 
-    with open(OUTPUT_FILE, "w", encoding=OUTPUT_ENCODING, newline="") as fout:
+    print(f"\nEscribiendo {output_name} ...", end=" ", flush=True)
+
+    # 1. Guardar en la carpeta correspondiente donde fue leído
+    with open(destino_origen, "w", encoding=OUTPUT_ENCODING, newline="") as fout:
         writer = csv.DictWriter(
             fout,
             fieldnames=header_guardado,
@@ -136,14 +208,22 @@ def main():
         for row in registros.values():
             writer.writerow(row)
 
+    # 2. Copiar/reemplazar en la carpeta principal 'Dash consentimientos'
+    if destino_raiz != destino_origen:
+        shutil.copy2(destino_origen, destino_raiz)
+
     filas_escritas = len(registros)
+    usuarios_unicos = len(set(u for u, _ in registros.keys()))
     print(f"{filas_escritas:,} filas")
 
-    print(f"\n[OK] Archivo generado  : {OUTPUT_FILE.resolve()}")
-    print(f"     Total leidas      : {total_leidas:,}")
-    print(f"     Usuarios unicos   : {filas_escritas:,}")
-    print(f"     Duplicados elim.  : {duplicados:,}")
-    print(f"     Columnas          : {header_guardado}")
+    print(f"\n[OK] Guardado en carpeta de origen  : {destino_origen}")
+    if destino_raiz != destino_origen:
+        print(f"[OK] Guardado en carpeta principal  : {destino_raiz}")
+    print(f"     Total filas leidas             : {total_leidas:,}")
+    print(f"     Registros unicos (usr + tipo)  : {filas_escritas:,}")
+    print(f"     Usuarios unicos                : {usuarios_unicos:,}")
+    print(f"     Duplicados descartados         : {duplicados:,}")
+    print(f"     Columnas                       : {header_guardado}")
 
 
 if __name__ == "__main__":

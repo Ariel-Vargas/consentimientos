@@ -340,7 +340,6 @@ def generar_html(datos: dict) -> str:
     </div>
     <div>
       <h1 class="header-title">Dashboard de Consentimientos</h1>
-      <p class="header-sub">Usuarios unicos &middot; Canal &middot; Tipo de consentimiento &middot; Estado</p>
     </div>
   </div>
 </header>
@@ -378,7 +377,6 @@ def generar_html(datos: dict) -> str:
   <div class="section">
     <div class="section-title">
       📈 Evolucion de Usuarios por Estado
-      <span>— usuarios unicos por dia</span>
     </div>
     <div class="charts-grid">
       <div class="chart-panel">
@@ -396,7 +394,6 @@ def generar_html(datos: dict) -> str:
   <div class="section">
     <div class="section-title">
       📊 Distribucion por Tipo de Consentimiento y Estado
-      <span>— usuarios unicos totales en rango filtrado</span>
     </div>
     <div class="chart-panel">
       <div class="chart-canvas-wrap" style="height:320px;"><canvas id="chart-tipo"></canvas></div>
@@ -407,7 +404,6 @@ def generar_html(datos: dict) -> str:
   <div class="section">
     <div class="section-title">
       📋 Matriz Canal x Consentimiento
-      <span>— usuarios unicos y porcentaje por estado</span>
     </div>
     <div class="table-wrapper">
       <table id="tabla" aria-live="polite">
@@ -418,10 +414,6 @@ def generar_html(datos: dict) -> str:
   </div>
 
 </main>
-
-<footer class="footer">
-  <p>Generado desde <code>consent.csv</code></p>
-</footer>
 
 <script>
 // ── Datos embebidos ────────────────────────────────────────────────────────────
