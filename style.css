@@ -340,14 +340,14 @@ body {
 .section-title-icon svg { width: 16px; height: 16px; }
 .section-title span.sub { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
 
-.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-.chart-panel { padding: 20px; position: relative; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-width: 0; }
+.chart-panel { padding: 20px; position: relative; min-width: 0; }
 .chart-panel + .chart-panel { border-left: 1px solid var(--border); }
 .chart-panel-header {
   font-size: 0.82rem; font-weight: 600; color: var(--text-sec);
   margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
 }
-.chart-canvas-wrap { position: relative; height: 320px; }
+.chart-canvas-wrap { position: relative; height: 320px; width: 100%; min-width: 0; }
 
 /* TABLA MATRIZ */
 .table-wrapper { overflow: auto; }

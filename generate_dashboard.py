@@ -472,14 +472,14 @@ body {
 .section-title-icon svg { width: 16px; height: 16px; }
 .section-title span.sub { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
 
-.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-.chart-panel { padding: 20px; position: relative; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-width: 0; }
+.chart-panel { padding: 20px; position: relative; min-width: 0; }
 .chart-panel + .chart-panel { border-left: 1px solid var(--border); }
 .chart-panel-header {
   font-size: 0.82rem; font-weight: 600; color: var(--text-sec);
   margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
 }
-.chart-canvas-wrap { position: relative; height: 320px; }
+.chart-canvas-wrap { position: relative; height: 320px; width: 100%; min-width: 0; }
 
 /* TABLA MATRIZ */
 .table-wrapper { overflow: auto; }
@@ -583,16 +583,9 @@ def generar_html(datos: dict) -> str:
 <header class="header">
   <div class="header-inner">
     <div class="header-brand">
-      <div class="header-logo" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-      </div>
-      <div>
+      
         <h1 class="header-title">Dashboard de Consentimientos</h1>
-        <p class="header-sub">Monitoreo y análisis de autorizaciones por canal, tipo y estado</p>
       </div>
-    </div>
-    <div class="header-badge">
-      <span>En Vivo</span>
     </div>
   </div>
 </header>
@@ -685,9 +678,8 @@ def generar_html(datos: dict) -> str:
         <div class="section-title-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         </div>
-        <div>Evolución Temporal y Distribución por Canal</div>
+        <div>Evolución de Consentimientos</div>
       </div>
-      <span class="sub">Tendencia temporal y desglose por canal de origen</span>
     </div>
     <div class="charts-grid">
       <div class="chart-panel">
@@ -710,7 +702,6 @@ def generar_html(datos: dict) -> str:
         </div>
         <div>Distribución por Tipo de Consentimiento y Estado</div>
       </div>
-      <span class="sub">Volumen de autorizaciones por categoría</span>
     </div>
     <div class="chart-panel">
       <div class="chart-canvas-wrap" style="height:340px;"><canvas id="chart-tipo"></canvas></div>
@@ -724,9 +715,8 @@ def generar_html(datos: dict) -> str:
         <div class="section-title-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
         </div>
-        <div>Matriz Canal x Tipo de Consentimiento</div>
+        <div>Detalle de los Tipos de Consentimiento</div>
       </div>
-      <span class="sub">Detalle tabular con tasas porcentuales</span>
     </div>
     <div class="table-wrapper">
       <table id="tabla" aria-live="polite">
@@ -1019,6 +1009,8 @@ document.getElementById("btn-reset").addEventListener("click", () => {{
 }});
 
 // ── Charts Setup ──────────────────────────────────────────────────────────────
+const FONT_FAMILY = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
 const CHART_DEFAULTS = {{
   responsive: true,
   maintainAspectRatio: false,
@@ -1032,7 +1024,7 @@ const CHART_DEFAULTS = {{
         pointStyle: "circle",
         boxWidth: 8,
         padding: 16,
-        font: {{ family: "Inter", size: 12, weight: 500 }}
+        font: {{ family: FONT_FAMILY, size: 12, weight: 500 }}
       }}
     }},
     tooltip: {{
@@ -1042,20 +1034,20 @@ const CHART_DEFAULTS = {{
       cornerRadius: 8,
       padding: 12,
       titleColor: "#f8fafc",
-      titleFont: {{ family: "Inter", size: 13, weight: 600 }},
+      titleFont: {{ family: FONT_FAMILY, size: 13, weight: 600 }},
       bodyColor: "#cbd5e1",
-      bodyFont: {{ family: "Inter", size: 12 }},
+      bodyFont: {{ family: FONT_FAMILY, size: 12 }},
       boxPadding: 6,
       usePointStyle: true
     }}
   }},
   scales: {{
     x: {{
-      ticks: {{ color: "#94a3b8", font: {{ family: "Inter", size: 11 }} }},
+      ticks: {{ color: "#94a3b8", font: {{ family: FONT_FAMILY, size: 11 }} }},
       grid: {{ color: "rgba(148, 163, 184, 0.08)" }}
     }},
     y: {{
-      ticks: {{ color: "#94a3b8", font: {{ family: "Inter", size: 11 }} }},
+      ticks: {{ color: "#94a3b8", font: {{ family: FONT_FAMILY, size: 11 }} }},
       grid: {{ color: "rgba(148, 163, 184, 0.08)" }},
       beginAtZero: true
     }}
@@ -1437,6 +1429,16 @@ function render() {{
 }}
 
 render();
+
+// Redibujar automaticamente cuando las fuentes web y la ventana terminen de cargar (evita texto invisible)
+if (document.fonts) {{
+  document.fonts.ready.then(() => {{
+    [chartLine, chartBar, chartTipo].forEach(c => c && c.update('none'));
+  }});
+}}
+window.addEventListener("load", () => {{
+  [chartLine, chartBar, chartTipo].forEach(c => c && c.update('none'));
+}});
 </script>
 </body>
 </html>
