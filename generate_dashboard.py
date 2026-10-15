@@ -728,9 +728,6 @@ def generar_html(datos: dict) -> str:
 
 </main>
 
-<footer class="footer">
-  Generado automáticamente con <code>generate_dashboard.py</code> &bull; Dashboard optimizado para GitHub Pages
-</footer>
 
 <script>
 // ── Datos embebidos ────────────────────────────────────────────────────────────
